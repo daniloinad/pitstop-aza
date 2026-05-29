@@ -182,6 +182,45 @@
   /* ranking live badge */
   .live-dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:6px;animation:pulse 1.5s infinite;}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  @media screen and (max-width:600px) {
+    /* Slides rolam verticalmente no mobile */
+    .slide {
+      position:absolute !important;
+      padding:70px 14px 100px !important;
+      justify-content:flex-start !important;
+      align-items:flex-start !important;
+      overflow-y:auto !important;
+      overflow-x:hidden !important;
+    }
+    /* Grids em coluna única */
+    .rules-grid.cols2,
+    .rules-grid.cols3 {
+      grid-template-columns:1fr !important;
+    }
+    /* Catálogo 2 colunas */
+    .catalog-grid {
+      grid-template-columns:1fr 1fr !important;
+    }
+    /* Tipografia menor */
+    .cover-title { font-size:44px !important; line-height:1 !important; }
+    .section-title { font-size:22px !important; }
+    .cover-sub { font-size:14px !important; }
+    .cover-period { font-size:13px !important; padding:8px 14px !important; }
+    .cover-msg { font-size:13px !important; margin-top:12px !important; }
+    .fire-row { margin-top:12px !important; }
+    .fire-badge { font-size:11px !important; padding:6px 12px !important; }
+    .section-header { margin-bottom:12px !important; }
+    .rule-card { padding:12px 14px !important; }
+    .rule-desc, .rule-row { font-size:12px !important; }
+    .rule-prize { font-size:12px !important; }
+    .gold-line { margin:0 0 12px !important; }
+    /* Sistema */
+    .s-header { padding:10px 14px !important; }
+    .s-page { padding:12px 14px !important; }
+    .s-tabs { padding:10px 14px 0 !important; overflow-x:auto !important; }
+    .grid2, .grid3, .grid4 { grid-template-columns:1fr !important; }
+  }
 </style>
 </head>
 <body>
