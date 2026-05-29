@@ -184,42 +184,68 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
   @media screen and (max-width:600px) {
-    /* Slides rolam verticalmente no mobile */
+    /* Deck altura total */
+    .deck { height:100dvh; }
+
+    /* Slides: scroll vertical, padding generoso */
     .slide {
       position:absolute !important;
-      padding:70px 14px 100px !important;
+      top:0; left:0; right:0; bottom:0;
+      padding:60px 16px 90px !important;
       justify-content:flex-start !important;
-      align-items:flex-start !important;
+      align-items:center !important;
       overflow-y:auto !important;
       overflow-x:hidden !important;
+      -webkit-overflow-scrolling:touch;
     }
-    /* Grids em coluna única */
+
+    /* Grids todos em coluna única */
+    .rules-grid,
     .rules-grid.cols2,
     .rules-grid.cols3 {
       grid-template-columns:1fr !important;
+      width:100% !important;
+      max-width:100% !important;
     }
+
     /* Catálogo 2 colunas */
     .catalog-grid {
       grid-template-columns:1fr 1fr !important;
+      max-width:100% !important;
     }
-    /* Tipografia menor */
-    .cover-title { font-size:44px !important; line-height:1 !important; }
-    .section-title { font-size:22px !important; }
+
+    /* Capa */
+    .cover-title { font-size:48px !important; line-height:0.95 !important; }
     .cover-sub { font-size:14px !important; }
-    .cover-period { font-size:13px !important; padding:8px 14px !important; }
+    .cover-period { font-size:13px !important; padding:8px 14px !important; margin-top:16px !important; }
     .cover-msg { font-size:13px !important; margin-top:12px !important; }
-    .fire-row { margin-top:12px !important; }
-    .fire-badge { font-size:11px !important; padding:6px 12px !important; }
-    .section-header { margin-bottom:12px !important; }
-    .rule-card { padding:12px 14px !important; }
-    .rule-desc, .rule-row { font-size:12px !important; }
-    .rule-prize { font-size:12px !important; }
-    .gold-line { margin:0 0 12px !important; }
+    .fire-row { margin-top:14px !important; }
+    .fire-badge { font-size:11px !important; padding:8px 14px !important; text-align:center !important; }
+
+    /* Títulos */
+    .section-title { font-size:22px !important; }
+    .section-tag { font-size:10px !important; }
+    .section-header { margin-bottom:14px !important; text-align:center !important; }
+    .gold-line { margin:0 auto 10px !important; }
+
+    /* Cards de regras */
+    .rule-card { padding:14px !important; width:100% !important; }
+    .rule-card-title { font-size:15px !important; }
+    .rule-desc { font-size:12px !important; }
+    .rule-prize { font-size:13px !important; white-space:nowrap !important; }
+    .rule-row { padding:7px 0 !important; }
+
+    /* Final */
+    .final-checks { max-width:100% !important; }
+    .check-text { font-size:13px !important; }
+    .cta-text { font-size:24px !important; }
+
     /* Sistema */
     .s-header { padding:10px 14px !important; }
     .s-page { padding:12px 14px !important; }
     .s-tabs { padding:10px 14px 0 !important; overflow-x:auto !important; }
     .grid2, .grid3, .grid4 { grid-template-columns:1fr !important; }
+    .s-logo { font-size:18px !important; }
   }
 </style>
 </head>
