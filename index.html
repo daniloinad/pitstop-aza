@@ -512,13 +512,34 @@
     <div class="divider"></div>
     <div class="grid2">
       <div class="card">
-        <div class="card-title">📦 Atualizar Estoque</div>
+        <div class="card-title">📦 Gerenciar Estoque</div>
+
+        <!-- ATUALIZAR QUANTIDADE -->
+        <div style="margin-bottom:6px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue);">↕️ Atualizar Quantidade</div>
         <div class="form-group"><label class="form-label">Produto</label><select class="form-input" id="stProd"><option value="">Selecione...</option></select></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Quantidade</label><input class="form-input" type="number" id="stQtd" placeholder="Ex: 10" min="0"></div>
           <div class="form-group"><label class="form-label">Operação</label><select class="form-input" id="stOp"><option value="set">Definir total</option><option value="add">Adicionar</option><option value="sub">Remover</option></select></div>
         </div>
-        <button class="btn btn-ghost" style="width:100%" onclick="atualizarEstoque()">ATUALIZAR ESTOQUE</button>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:16px" onclick="atualizarEstoque()">ATUALIZAR QUANTIDADE</button>
+
+        <div class="divider" style="margin:12px 0"></div>
+
+        <!-- CADASTRAR PRODUTO -->
+        <div style="margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);">➕ Cadastrar Novo Produto</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nome</label><input class="form-input" type="text" id="newProdNome" placeholder="Ex: Refrigerante"></div>
+          <div class="form-group"><label class="form-label">Pontos</label><input class="form-input" type="number" id="newProdPts" placeholder="Ex: 200" min="1"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Quantidade inicial</label><input class="form-input" type="number" id="newProdQtd" placeholder="Ex: 10" min="0" value="0"></div>
+        <button class="btn btn-green" style="width:100%;margin-bottom:16px" onclick="cadastrarProduto()">CADASTRAR PRODUTO</button>
+
+        <div class="divider" style="margin:12px 0"></div>
+
+        <!-- REMOVER PRODUTO -->
+        <div style="margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--red);">🗑️ Remover Produto</div>
+        <div class="form-group"><label class="form-label">Produto</label><select class="form-input" id="delProd"><option value="">Selecione...</option></select></div>
+        <button class="btn btn-red" style="width:100%" onclick="removerProduto()">REMOVER PRODUTO</button>
       </div>
       <div class="card">
         <div class="card-title">👤 Gerenciar Colaboradores</div>
@@ -559,20 +580,23 @@ const SENHA = 'mercadinho';
 let isAdmin = false;
 
 const produtos = [
-  {nome:'Fandangos',pts:120,estoque:10},
-  {nome:'Coca-Cola',pts:150,estoque:8},
-  {nome:'Torcida',pts:150,estoque:6},
-  {nome:'Corona Individual',pts:200,estoque:12},
-  {nome:'Monster Energético',pts:250,estoque:5},
+  {nome:'Bala Dadinho 5un',pts:500,estoque:3},
+  {nome:'Bala Halls',pts:0,estoque:0},
+  {nome:'Bisc. Passa Tempo',pts:0,estoque:0},
   {nome:'Bis',pts:300,estoque:7},
-  {nome:'Monster',pts:400,estoque:4},
-  {nome:'Bala Dadinho',pts:500,estoque:3},
-  {nome:'Pack Corona c/6',pts:1200,estoque:2},
-  {nome:'Vinho Pérgola',pts:1500,estoque:2},
+  {nome:'Cheetos',pts:120,estoque:0},
+  {nome:'Chiclete Trident',pts:0,estoque:0},
+  {nome:'Corona Individual',pts:200,estoque:12},
   {nome:'Crédito iFood R$50',pts:2000,estoque:3},
+  {nome:'Fandangos',pts:120,estoque:10},
+  {nome:'Monster',pts:400,estoque:4},
+  {nome:'Monster Energético',pts:250,estoque:5},
+  {nome:'Pack Corona c/6',pts:1200,estoque:2},
+  {nome:'Torcida',pts:150,estoque:6},
   {nome:'Uniforme',pts:3000,estoque:2},
+  {nome:'Vale Churrascaria Individual',pts:0,estoque:0},
 ];
-const emojis = ['🍿','🥤','🍟','🍺','⚡','🍫','🟢','🍬','🍺','🍷','📱','👕'];
+const emojis = ['🍬','🍬','🍪','🍫','🧀','🍬','🍺','📱','🍿','🟢','⚡','🍺','🍟','👕','🥩'];
 
 let colaboradores = [
   {nome:'Raianne Santos',pontos:0,trocas:0,historico:[]},
@@ -668,14 +692,14 @@ document.getElementById('deck').addEventListener('touchend', e => {
 
 function renderCatalogSlide(){
   const g=document.getElementById('catalogSlide');
-  const max=3000;
+  const max=Math.max(...produtos.map(p=>p.pts),1);
   g.innerHTML=produtos.map((p,i)=>{
+    const indisp = p.pts===0 || p.estoque===0;
     const pct=Math.round((p.pts/max)*100);
-    const avail=p.estoque>0;
-    return `<div class="cat-item" style="${!avail?'opacity:0.4':''}">
-      <span class="cat-name">${emojis[i]} ${p.nome}${!avail?' <span style="color:var(--red);font-size:10px">Esgotado</span>':''}</span>
-      <span class="cat-pts">${p.pts.toLocaleString()} pts</span>
-      <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+    return `<div class="cat-item" style="${indisp?'opacity:0.4;filter:grayscale(0.5)':''}">
+      <span class="cat-name">${emojis[i]} ${p.nome}</span>
+      <span class="cat-pts">${indisp?'🚫 Indisponível':p.pts.toLocaleString()+' pts'}</span>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${indisp?0:pct}%"></div></div>
     </div>`;
   }).join('');
 }
@@ -760,12 +784,13 @@ function renderRanking(){
 
 function renderEstoque(){
   document.getElementById('estoqueGrid').innerHTML=produtos.map(p=>{
-    const low=p.estoque<=2, zero=p.estoque===0;
-    return `<div class="stock-item">
+    const indisp = p.pts===0 || p.estoque===0;
+    const low = p.estoque<=2 && p.estoque>0 && p.pts>0;
+    return `<div class="stock-item" style="${indisp?'opacity:0.45;filter:grayscale(0.5)':''}">
       <span class="stock-name">${p.nome}</span>
-      <span class="stock-pts">${p.pts.toLocaleString()} pts</span>
-      <span class="stock-qty ${zero||low?'low':'ok'}">${p.estoque}</span>
-      <span class="stock-label">${zero?'⚠️ Esgotado':low?'⚠️ Baixo':'✅ Disponível'}</span>
+      <span class="stock-pts">${p.pts>0?p.pts.toLocaleString()+' pts':'— pts'}</span>
+      <span class="stock-qty ${indisp?'low':low?'low':'ok'}">${p.estoque}</span>
+      <span class="stock-label">${p.pts===0?'🚫 Indisponível':p.estoque===0?'🚫 Indisponível':low?'⚠️ Baixo':'✅ Disponível'}</span>
     </div>`;
   }).join('');
 }
@@ -786,7 +811,7 @@ function renderAdmin(){
   const co=colaboradores.map(c=>`<option value="${c.nome}">${c.nome} (${c.pontos} pts)</option>`).join('');
   ['ptColab','trColab'].forEach(id=>{const e=document.getElementById(id);const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+co;if(v)e.value=v;});
   const po=produtos.map((p,i)=>`<option value="${i}">${p.nome} (${p.pts} pts · estoque: ${p.estoque})</option>`).join('');
-  ['trProd','stProd'].forEach(id=>{const e=document.getElementById(id);const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+po;if(v)e.value=v;});
+  ['trProd','stProd','delProd'].forEach(id=>{const e=document.getElementById(id);if(!e)return;const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+po;if(v)e.value=v;});
   document.getElementById('colabList').innerHTML=colaboradores.map((c,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
       <span style="font-size:13px">${c.nome} <span style="color:var(--gold)">${c.pontos} pts</span></span>
@@ -838,6 +863,7 @@ function registrarTroca(){
   if(!nome||isNaN(idx)){toast('⚠️ Preencha todos os campos!');return;}
   const c=colaboradores.find(x=>x.nome===nome);
   const p=produtos[idx];
+  if(p.pts===0){toast('⚠️ Produto indisponível!');return;}
   const total=p.pts*qtd;
   if(c.pontos<total){toast('⚠️ Pontos insuficientes!');return;}
   if(p.estoque<qtd){toast('⚠️ Estoque insuficiente!');return;}
@@ -857,6 +883,32 @@ function atualizarEstoque(){
   if(op==='set')p.estoque=qtd; else if(op==='add')p.estoque+=qtd; else p.estoque=Math.max(0,p.estoque-qtd);
   save();renderAll();
   toast(`✅ Estoque de ${p.nome}: ${p.estoque} un.`);
+}
+
+function cadastrarProduto(){
+  const nome=document.getElementById('newProdNome').value.trim();
+  const pts=parseInt(document.getElementById('newProdPts').value);
+  const qtd=parseInt(document.getElementById('newProdQtd').value)||0;
+  if(!nome||!pts||pts<=0){toast('⚠️ Preencha nome e pontos!');return;}
+  if(produtos.find(p=>p.nome.toLowerCase()===nome.toLowerCase())){toast('⚠️ Produto já existe!');return;}
+  produtos.push({nome,pts,estoque:qtd});
+  emojis.push('🛍️');
+  document.getElementById('newProdNome').value='';
+  document.getElementById('newProdPts').value='';
+  document.getElementById('newProdQtd').value='0';
+  save();renderAll();
+  toast(`✅ ${nome} cadastrado!`);
+}
+
+function removerProduto(){
+  const idx=parseInt(document.getElementById('delProd').value);
+  if(isNaN(idx)){toast('⚠️ Selecione um produto!');return;}
+  const p=produtos[idx];
+  if(!confirm(`Remover "${p.nome}" do estoque?`))return;
+  produtos.splice(idx,1);
+  emojis.splice(idx,1);
+  save();renderAll();
+  toast(`🗑️ ${p.nome} removido!`);
 }
 
 function addColab(){
