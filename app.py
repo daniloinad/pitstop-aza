@@ -53,13 +53,20 @@ def init_db():
         produto TEXT UNIQUE, pontos INTEGER, quantidade INTEGER
     )""")
 
+    # Colaboradores do backup
     colaboradores = [
-        "Raianne Santos","Esteffany Souza","André Silva",
-        "Larisse Garcia","Wanessa Cardoso","Arthur Alves","Wynara dos Reis"
+        ("Raianne Santos", 0, 0),
+        ("Esteffany Souza", 0, 0),
+        ("André Silva", 0, 0),
+        ("Larisse Garcia", 0, 0),
+        ("Wanessa Cardoso", 0, 0),
+        ("Arthur Alves", 0, 0),
+        ("Wynara dos Reis", 0, 0),
     ]
-    for nome in colaboradores:
-        c.execute("INSERT OR IGNORE INTO colaboradores (nome) VALUES (?)", (nome,))
+    for nome, pts, trocas in colaboradores:
+        c.execute("INSERT OR IGNORE INTO colaboradores (nome, pontos, trocas) VALUES (?,?,?)", (nome, pts, trocas))
 
+    # Produtos atualizados
     produtos = [
         ("Bala Halls", 0, 0),
         ("Bisc. Passa Tempo", 0, 0),
@@ -199,7 +206,7 @@ with tab1:
             pct = int(row['pontos'] / max_pts * 100) if max_pts > 0 else 0
             st.progress(pct / 100)
         with col3:
-            st.markdown(f"<span style='font-size:1.4rem;color:#FFD700;font-weight:700'>{int(row['pontos']):,} pts</span>".replace(",", "."), unsafe_allow_html=True)
+            st.markdown(f"<span style='font-size:1.4rem;color:#FFD700;font-weight:700'>{int(row['pontos']):,} pts</span>".replace(",","."), unsafe_allow_html=True)
         with col4:
             if st.button("📋 Histórico", key=f"h_{row['nome']}"):
                 st.session_state[f"show_{row['nome']}"] = not st.session_state.get(f"show_{row['nome']}", False)
@@ -245,8 +252,7 @@ with tab2:
         with c2: st_op = st.selectbox("Operação", ["Definir total", "Adicionar", "Remover"], key="st_op")
         with c3: st_qtd = st.number_input("Quantidade", min_value=0, value=1, key="st_qtd")
         if st.button("✅ Atualizar Quantidade"):
-            conn = get_conn()
-            c = conn.cursor()
+            conn = get_conn(); c = conn.cursor()
             if st_op == "Definir total":
                 c.execute("UPDATE estoque SET quantidade=? WHERE produto=?", (st_qtd, prod_sel))
             elif st_op == "Adicionar":
@@ -257,12 +263,24 @@ with tab2:
             st.success(f"✅ Estoque de {prod_sel} atualizado!"); st.rerun()
 
         st.divider()
+        st.markdown("### 💰 Atualizar Pontos do Produto")
+        df_est3 = get_estoque()
+        c1, c2 = st.columns(2)
+        with c1: prod_pts_sel = st.selectbox("Produto", df_est3["produto"].tolist(), key="prod_pts_sel")
+        with c2: novo_valor_pts = st.number_input("Novos pontos", min_value=0, value=0, key="novo_valor_pts")
+        if st.button("💰 Atualizar Pontos"):
+            conn = get_conn()
+            conn.execute("UPDATE estoque SET pontos=? WHERE produto=?", (novo_valor_pts, prod_pts_sel))
+            conn.commit(); conn.close()
+            st.success(f"✅ Pontos de {prod_pts_sel}: {novo_valor_pts} pts!"); st.rerun()
+
+        st.divider()
         st.markdown("### ➕ Cadastrar Novo Produto")
         c1, c2, c3 = st.columns(3)
-        with c1: novo_prod = st.text_input("Nome do produto", key="novo_prod")
+        with c1: novo_prod = st.text_input("Nome", key="novo_prod")
         with c2: novo_pts = st.number_input("Pontos", min_value=0, value=0, key="novo_pts")
         with c3: novo_qtd = st.number_input("Quantidade inicial", min_value=0, value=0, key="novo_qtd")
-        if st.button("➕ Cadastrar Produto"):
+        if st.button("➕ Cadastrar"):
             if novo_prod.strip():
                 try:
                     conn = get_conn()
@@ -274,8 +292,8 @@ with tab2:
 
         st.divider()
         st.markdown("### 🗑️ Remover Produto")
-        df_est3 = get_estoque()
-        del_prod = st.selectbox("Produto para remover", df_est3["produto"].tolist(), key="del_prod")
+        df_est4 = get_estoque()
+        del_prod = st.selectbox("Produto para remover", df_est4["produto"].tolist(), key="del_prod")
         if st.button("🗑️ Remover Produto", type="secondary"):
             if st.session_state.get("confirm_del") == del_prod:
                 conn = get_conn()
@@ -286,18 +304,6 @@ with tab2:
             else:
                 st.session_state["confirm_del"] = del_prod
                 st.warning(f"Clique novamente para confirmar a remoção de **{del_prod}**")
-
-        st.divider()
-        st.markdown("### 💰 Atualizar Pontos do Produto")
-        df_est4 = get_estoque()
-        c1, c2 = st.columns(2)
-        with c1: prod_pts_sel = st.selectbox("Produto", df_est4["produto"].tolist(), key="prod_pts_sel")
-        with c2: novo_valor_pts = st.number_input("Novos pontos", min_value=0, value=0, key="novo_valor_pts")
-        if st.button("💰 Atualizar Pontos"):
-            conn = get_conn()
-            conn.execute("UPDATE estoque SET pontos=? WHERE produto=?", (novo_valor_pts, prod_pts_sel))
-            conn.commit(); conn.close()
-            st.success(f"✅ Pontos de {prod_pts_sel} atualizados para {novo_valor_pts}!"); st.rerun()
 
 # ─── TROCAS ───
 with tab3:
@@ -390,7 +396,7 @@ if tab4:
         with c2:
             df_del = get_colaboradores()
             del_colab = st.selectbox("Remover colaborador", df_del["nome"].tolist(), key="del_colab")
-            if st.button("🗑️ Remover", type="secondary"):
+            if st.button("🗑️ Remover Colaborador", type="secondary"):
                 conn = get_conn()
                 conn.execute("DELETE FROM colaboradores WHERE nome=?", (del_colab,))
                 conn.commit(); conn.close()
