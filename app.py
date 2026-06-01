@@ -66,7 +66,13 @@ def init_db():
     for nome, pts, trocas in colaboradores:
         c.execute("INSERT OR IGNORE INTO colaboradores (nome, pontos, trocas) VALUES (?,?,?)", (nome, pts, trocas))
 
-    # Produtos atualizados
+    # Limpa produtos antigos e recadastra todos atualizados
+    produtos_antigos = [
+        "Coca-Cola", "Vinho Pérgola", "Bala Dadinho"
+    ]
+    for p in produtos_antigos:
+        c.execute("DELETE FROM estoque WHERE produto=?", (p,))
+
     produtos = [
         ("Bala Halls", 0, 0),
         ("Bisc. Passa Tempo", 0, 0),
