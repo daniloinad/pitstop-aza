@@ -447,7 +447,7 @@
         <button class="btn btn-gold" onclick="salvarSair()" style="display:flex;align-items:center;gap:6px;">🔒 Salvar e Sair</button>
       </div>
     </div>
-    <div class="sec-sub">Gerencie pontuações, estoque e trocas · Exporte o backup regularmente para não perder dados</div>
+    <div class="sec-sub">Gerencie pontuações, estoque e trocas · Todos os dados são salvos automaticamente no banco de dados</div>
     <div class="grid2 mt16">
       <div class="card">
         <div class="card-title">➕ Lançar / Descontar Pontos</div>
@@ -587,10 +587,10 @@ const SENHA = 'mercadinho';
 let isAdmin = false;
 
 const produtos = [
-  {nome:'Bala Dadinho',pts:500,estoque:3},
+  {nome:'Bala Dadinho 5un',pts:500,estoque:3},
   {nome:'Bala Halls',pts:50,estoque:0},
   {nome:'Bisc. Passa Tempo',pts:100,estoque:0},
-  {nome:'Bis',pts:300,estoque:7},
+  {nome:'Bis',pts:300,estoque:0},
   {nome:'Cheetos',pts:120,estoque:0},
   {nome:'Chiclete Trident',pts:80,estoque:0},
   {nome:'Coca-Cola',pts:150,estoque:0},
@@ -603,6 +603,8 @@ const produtos = [
   {nome:'Uniforme',pts:3000,estoque:2},
   {nome:'Vale Churrascaria Individual',pts:0,estoque:0},
   {nome:'Vinho Pérgola',pts:1500,estoque:0},
+  {nome:'Ouro Branco',pts:50,estoque:0},
+  {nome:'Sonho de Valsa',pts:50,estoque:0},
 ];
 const emojis = ['🍬','🍬','🍪','🍫','🧀','🍬','🥤','🍺','📱','⚡','🍿','🍺','🍟','👕','🥩','🍷'];
 
@@ -657,12 +659,22 @@ async function load() {
     if (cols && cols.length > 0) {
       colaboradores = cols.map(c => ({nome:c.nome, pontos:c.pontos, trocas:c.trocas, historico:[]}));
     }
-    // Carrega estoque do Supabase
+    // Carrega estoque do Supabase e reconstrói lista de produtos
     const {data: est} = await sb.from('estoque').select('*').order('produto');
     if (est && est.length > 0) {
+      // Reconstrói lista de produtos do Supabase (fonte única de verdade)
+      produtos.length = 0;
+      emojis.length = 0;
+      const emojiMap = {
+        'Bala Dadinho':'🍬','Bala Halls':'🍬','Bisc. Passa Tempo':'🍪',
+        'Bis':'🍫','Cheetos':'🧀','Chiclete Trident':'🍬','Coca-Cola':'🥤',
+        'Corona Individual':'🍺','Crédito iFood R$50':'📱','Energético Monster':'⚡',
+        'Fandangos':'🍿','Pack Corona c/6':'🍺','Torcida':'🍟',
+        'Uniforme':'👕','Vale Churrascaria Individual':'🥩','Vinho Pérgola':'🍷','Ouro Branco':'🍫','Sonho de Valsa':'🍫'
+      };
       est.forEach(e => {
-        const p = produtos.find(x => x.nome === e.produto);
-        if (p) { p.estoque = e.quantidade; p.pts = e.pontos; }
+        produtos.push({nome:e.produto, pts:e.pontos, estoque:e.quantidade});
+        emojis.push(emojiMap[e.produto] || '🛍️');
       });
     }
     // Carrega historico
