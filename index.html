@@ -737,12 +737,13 @@ function renderCatalogSlide(){
   const g=document.getElementById('catalogSlide');
   const max=Math.max(...produtos.map(p=>p.pts),1);
   g.innerHTML=produtos.map((p,i)=>{
-    const indisp = p.pts===0 || p.estoque===0;
+    const semPts = p.pts===0;
+    const semEstoque = p.estoque===0;
     const pct=Math.round((p.pts/max)*100);
-    return `<div class="cat-item" style="${indisp?'opacity:0.4;filter:grayscale(0.5)':''}">
+    return `<div class="cat-item" style="${semPts?'opacity:0.4;filter:grayscale(0.5)':semEstoque?'opacity:0.7':''}">
       <span class="cat-name">${emojis[i]} ${p.nome}</span>
-      <span class="cat-pts">${indisp?'🚫 Indisponível':p.pts.toLocaleString()+' pts'}</span>
-      <div class="cat-bar"><div class="cat-bar-fill" style="width:${indisp?0:pct}%"></div></div>
+      <span class="cat-pts">${semPts?'🚫 Indisponível':p.pts.toLocaleString()+' pts'+(semEstoque?' · <span style="color:var(--red);font-size:10px">Esgotado</span>':'')}</span>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${semPts?0:pct}%"></div></div>
     </div>`;
   }).join('');
 }
@@ -826,13 +827,14 @@ function renderRanking(){
 
 function renderEstoque(){
   document.getElementById('estoqueGrid').innerHTML=produtos.map(p=>{
-    const indisp = p.pts===0 || p.estoque===0;
-    const low = p.estoque<=2 && p.estoque>0 && p.pts>0;
-    return `<div class="stock-item" style="${indisp?'opacity:0.45;filter:grayscale(0.5)':''}">
+    const semPts = p.pts===0;
+    const semEstoque = p.estoque===0;
+    const low = p.estoque<=2 && p.estoque>0;
+    return `<div class="stock-item" style="${semPts?'opacity:0.45;filter:grayscale(0.5)':''}">
       <span class="stock-name">${p.nome}</span>
       <span class="stock-pts">${p.pts>0?p.pts.toLocaleString()+' pts':'— pts'}</span>
-      <span class="stock-qty ${indisp?'low':low?'low':'ok'}">${p.estoque}</span>
-      <span class="stock-label">${p.pts===0?'🚫 Indisponível':p.estoque===0?'🚫 Indisponível':low?'⚠️ Baixo':'✅ Disponível'}</span>
+      <span class="stock-qty ${semEstoque||low?'low':'ok'}">${p.estoque}</span>
+      <span class="stock-label">${semPts?'🚫 Sem pontos':semEstoque?'⚠️ Esgotado':low?'⚠️ Baixo':'✅ Disponível'}</span>
     </div>`;
   }).join('');
 }
