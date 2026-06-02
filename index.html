@@ -920,7 +920,7 @@ function renderAll(){
 // ══════════════════════════════
 // AÇÕES ADMIN
 // ══════════════════════════════
-function lancarPontos(){
+async function lancarPontos(){
   const nome=document.getElementById('ptColab').value;
   const qtd=parseInt(document.getElementById('ptQtd').value);
   const op=document.getElementById('ptOp').value;
@@ -933,14 +933,15 @@ function lancarPontos(){
   historico.push({data:now(),colab:nome,op,pts:qtd,motivo});
   if(!c.historico) c.historico=[];
   c.historico.push(entry);
-  sbAddHistorico({data:now(),colab:nome,op,pts:qtd,motivo,saldo:c.pontos});
+  await sb.from('colaboradores').update({pontos:c.pontos}).eq('nome',nome);
+  await sbAddHistorico({data:now(),colab:nome,op,pts:qtd,motivo,saldo:c.pontos});
   save();renderAll();
   document.getElementById('ptQtd').value='';
   document.getElementById('ptMotivo').value='';
   toast(`✅ ${op==='add'?'+':'−'}${qtd} pts para ${nome}!`);
 }
 
-function registrarTroca(){
+async function registrarTroca(){
   const nome=document.getElementById('trColab').value;
   const idx=parseInt(document.getElementById('trProd').value);
   const qtd=parseInt(document.getElementById('trQtd').value)||1;
@@ -955,22 +956,29 @@ function registrarTroca(){
   const trocaEntry = {data:now(),colab:nome,prod:p.nome+(qtd>1?` x${qtd}`:''),pts:total};
   trocas.push(trocaEntry);
   historico.push({data:now(),colab:nome,op:'sub',pts:total,motivo:`Troca: ${p.nome}`});
-  sbAddTroca(trocaEntry);
-  sbAddHistorico({data:now(),colab:nome,op:'sub',pts:total,motivo:`Troca: ${p.nome}`,saldo:c.pontos});
+  await sb.from('colaboradores').update({pontos:c.pontos,trocas:c.trocas}).eq('nome',nome);
+  await sb.from('estoque').update({quantidade:p.estoque}).eq('produto',p.nome);
+  await sbAddTroca(trocaEntry);
+  await sbAddHistorico({data:now(),colab:nome,op:'sub',pts:total,motivo:`Troca: ${p.nome}`,saldo:c.pontos});
   save();renderAll();
   toast(`✅ Troca registrada! ${nome} trocou ${p.nome}`);
 }
 
-function atualizarEstoque(){
+async function atualizarEstoque(){
   const idx=parseInt(document.getElementById('stProd').value);
   const qtd=parseInt(document.getElementById('stQtd').value);
   const op=document.getElementById('stOp').value;
   if(isNaN(idx)||isNaN(qtd)||qtd<0){toast('⚠️ Preencha os campos!');return;}
   const p=produtos[idx];
-  if(op==='set')p.estoque=qtd; else if(op==='add')p.estoque+=qtd; else p.estoque=Math.max(0,p.estoque-qtd);
-  sb.from('estoque').update({quantidade:p.estoque}).eq('produto',p.nome);
+  let novaQtd;
+  if(op==='set') novaQtd=qtd;
+  else if(op==='add') novaQtd=p.estoque+qtd;
+  else novaQtd=Math.max(0,p.estoque-qtd);
+  const {error} = await sb.from('estoque').update({quantidade:novaQtd}).eq('produto',p.nome);
+  if(error){toast('⚠️ Erro ao salvar!');console.error(error);return;}
+  p.estoque=novaQtd;
   save();renderAll();
-  toast(`✅ Estoque de ${p.nome}: ${p.estoque} un.`);
+  toast(`✅ Estoque de ${p.nome}: ${novaQtd} un.`);
 }
 
 function cadastrarProduto(){
