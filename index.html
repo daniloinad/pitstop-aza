@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🛒 Pit Stop AZA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -574,6 +575,13 @@
 
 <script>
 // ══════════════════════════════
+// SUPABASE
+// ══════════════════════════════
+const SUPABASE_URL = 'https://pkufkejzqbgomezqumbl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_lGdMQfRBrO2KZxW-EbOv5Q_XmLkAkzY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════
 // STATE
 // ══════════════════════════════
 const SENHA = 'mercadinho';
@@ -613,23 +621,57 @@ let trocas = [];
 // ══════════════════════════════
 // PERSIST
 // ══════════════════════════════
+// ── Supabase helpers ──
+async function sbSaveColabs() {
+  for (const c of colaboradores) {
+    await sb.from('colaboradores').upsert({nome:c.nome, pontos:c.pontos, trocas:c.trocas}, {onConflict:'nome'});
+  }
+}
+async function sbSaveEstoque() {
+  for (const p of produtos) {
+    await sb.from('estoque').upsert({produto:p.nome, pontos:p.pts, quantidade:p.estoque}, {onConflict:'produto'});
+  }
+}
+async function sbAddHistorico(entry) {
+  await sb.from('historico').insert({data:entry.data, colaborador:entry.colab, operacao:entry.op==='add'?'Adição':'Desconto', pontos:entry.pts, motivo:entry.motivo, saldo_apos:entry.saldo});
+}
+async function sbAddTroca(entry) {
+  await sb.from('trocas').insert({data:entry.data, colaborador:entry.colab, produto:entry.prod, pontos:entry.pts});
+}
+
 function save() {
+  // Mantém localStorage como cache local
   localStorage.setItem('ps_prod', JSON.stringify(produtos.map(p=>p.estoque)));
   localStorage.setItem('ps_cols', JSON.stringify(colaboradores));
   localStorage.setItem('ps_hist', JSON.stringify(historico));
   localStorage.setItem('ps_troc', JSON.stringify(trocas));
+  // Salva no Supabase
+  sbSaveColabs();
+  sbSaveEstoque();
 }
-function load() {
+
+async function load() {
   try {
-    const pe = localStorage.getItem('ps_prod');
-    const pc = localStorage.getItem('ps_cols');
-    const ph = localStorage.getItem('ps_hist');
-    const pt = localStorage.getItem('ps_troc');
-    if (pe) JSON.parse(pe).forEach((v,i)=>{if(produtos[i])produtos[i].estoque=v;});
-    if (pc) colaboradores = JSON.parse(pc);
-    if (ph) historico = JSON.parse(ph);
-    if (pt) trocas = JSON.parse(pt);
-  } catch(e){}
+    // Carrega colaboradores do Supabase
+    const {data: cols} = await sb.from('colaboradores').select('*').order('pontos', {ascending: false});
+    if (cols && cols.length > 0) {
+      colaboradores = cols.map(c => ({nome:c.nome, pontos:c.pontos, trocas:c.trocas, historico:[]}));
+    }
+    // Carrega estoque do Supabase
+    const {data: est} = await sb.from('estoque').select('*').order('produto');
+    if (est && est.length > 0) {
+      est.forEach(e => {
+        const p = produtos.find(x => x.nome === e.produto);
+        if (p) { p.estoque = e.quantidade; p.pts = e.pontos; }
+      });
+    }
+    // Carrega historico
+    const {data: hist} = await sb.from('historico').select('*').order('id', {ascending: false});
+    if (hist) historico = hist.map(h => ({data:h.data, colab:h.colaborador, op:h.operacao==='Adição'?'add':'sub', pts:h.pontos, motivo:h.motivo}));
+    // Carrega trocas
+    const {data: tr} = await sb.from('trocas').select('*').order('id', {ascending: false});
+    if (tr) trocas = tr.map(t => ({data:t.data, colab:t.colaborador, prod:t.produto, pts:t.pontos}));
+  } catch(e){ console.log('Supabase load error:', e); }
 }
 
 // ══════════════════════════════
@@ -756,7 +798,6 @@ function logout(){
 
 function salvarSair(){
   save();
-  exportarBackup();
   logout();
 }
 
@@ -850,6 +891,7 @@ function lancarPontos(){
   historico.push({data:now(),colab:nome,op,pts:qtd,motivo});
   if(!c.historico) c.historico=[];
   c.historico.push(entry);
+  sbAddHistorico({data:now(),colab:nome,op,pts:qtd,motivo,saldo:c.pontos});
   save();renderAll();
   document.getElementById('ptQtd').value='';
   document.getElementById('ptMotivo').value='';
@@ -868,8 +910,11 @@ function registrarTroca(){
   if(c.pontos<total){toast('⚠️ Pontos insuficientes!');return;}
   if(p.estoque<qtd){toast('⚠️ Estoque insuficiente!');return;}
   c.pontos-=total;c.trocas+=qtd;p.estoque-=qtd;
-  trocas.push({data:now(),colab:nome,prod:p.nome+(qtd>1?` x${qtd}`:''),pts:total});
+  const trocaEntry = {data:now(),colab:nome,prod:p.nome+(qtd>1?` x${qtd}`:''),pts:total};
+  trocas.push(trocaEntry);
   historico.push({data:now(),colab:nome,op:'sub',pts:total,motivo:`Troca: ${p.nome}`});
+  sbAddTroca(trocaEntry);
+  sbAddHistorico({data:now(),colab:nome,op:'sub',pts:total,motivo:`Troca: ${p.nome}`,saldo:c.pontos});
   save();renderAll();
   toast(`✅ Troca registrada! ${nome} trocou ${p.nome}`);
 }
@@ -1050,8 +1095,10 @@ function importarBackup(event) {
 // ══════════════════════════════
 // INIT
 // ══════════════════════════════
-load();
-renderAll();
+(async () => {
+  await load();
+  renderAll();
+})();
 </script>
 </body>
 </html>
