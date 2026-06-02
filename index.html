@@ -759,10 +759,13 @@ function renderCatalogSlide(){
   }).join('');
 }
 
-function renderRankSlide(){
-  const sorted=[...colaboradores].sort((a,b)=>b.pontos-a.pontos);
+async function renderRankSlide(){
+  const el = document.getElementById('rankSlide');
+  if(!el) return;
+  const {data: cols} = await sb.from('colaboradores').select('*').order('pontos',{ascending:false});
+  if(cols && cols.length > 0) colaboradores = cols.map(c=>({nome:c.nome,pontos:c.pontos,trocas:c.trocas,historico:[]}));
   const medals=['🥇','🥈','🥉'];
-  document.getElementById('rankSlide').innerHTML=sorted.map((c,i)=>`<tr>
+  el.innerHTML=colaboradores.map((c,i)=>`<tr>
     <td><span class="rank-num ${i<3?'rank-'+(i+1):'rank-other'}">${medals[i]||i+1}</span></td>
     <td><strong>${c.nome}</strong></td>
     <td><span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold)">${c.pontos.toLocaleString()}</span> <span style="font-size:11px;color:var(--text2)">pts</span></td>
@@ -836,8 +839,27 @@ function renderRanking(){
   }).join('');
 }
 
-function renderEstoque(){
-  document.getElementById('estoqueGrid').innerHTML=produtos.map(p=>{
+async function renderEstoque(){
+  const grid = document.getElementById('estoqueGrid');
+  if(!grid) return;
+  // Busca estoque atualizado do Supabase
+  const {data: est} = await sb.from('estoque').select('*').order('produto');
+  if(est && est.length > 0){
+    produtos.length=0; emojis.length=0;
+    const emojiMap = {
+      'Bala Dadinho 5un':'🍬','Bala Halls':'🍬','Bisc. Passa Tempo':'🍪',
+      'Bis':'🍫','Cheetos':'🧀','Chiclete Trident':'🍬','Coca-Cola':'🥤',
+      'Corona Individual':'🍺','Crédito iFood R$50':'📱','Energético Monster':'⚡',
+      'Fandangos':'🍿','Ouro Branco':'🍫','Pack Corona c/6':'🍺',
+      'Sonho de Valsa':'🍫','Torcida':'🍟','Uniforme':'👕',
+      'Vale Churrascaria Individual':'🥩','Vinho Pérgola':'🍷'
+    };
+    est.forEach(e=>{
+      produtos.push({nome:e.produto,pts:e.pontos,estoque:e.quantidade});
+      emojis.push(emojiMap[e.produto]||'🛍️');
+    });
+  }
+  grid.innerHTML=produtos.map(p=>{
     const semPts = p.pts===0;
     const semEstoque = p.estoque===0;
     const low = p.estoque<=2 && p.estoque>0;
@@ -850,14 +872,17 @@ function renderEstoque(){
   }).join('');
 }
 
-function renderTrocas(){
+async function renderTrocas(){
   const body=document.getElementById('trocasBody');
-  if(!trocas.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:24px">Nenhuma troca registrada.</td></tr>';return;}
-  body.innerHTML=[...trocas].reverse().map(t=>`<tr>
-    <td style="color:var(--text2)">${t.data}</td>
-    <td><strong>${t.colab}</strong></td>
-    <td>${t.prod}</td>
-    <td><span class="badge badge-red">-${t.pts.toLocaleString()} pts</span></td>
+  if(!body) return;
+  body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:24px">Carregando...</td></tr>';
+  const {data} = await sb.from('trocas').select('*').order('id',{ascending:false});
+  if(!data||!data.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:24px">Nenhuma troca registrada.</td></tr>';return;}
+  body.innerHTML=data.map(t=>`<tr>
+    <td style="color:var(--text2)">${t.data||'—'}</td>
+    <td><strong>${t.colaborador}</strong></td>
+    <td>${t.produto}</td>
+    <td><span class="badge badge-red">-${(t.pontos||0).toLocaleString()} pts</span></td>
     <td><span class="badge badge-green">✅ Realizada</span></td>
   </tr>`).join('');
 }
@@ -884,9 +909,12 @@ function renderAdmin(){
 }
 
 function renderAll(){
-  renderRanking();renderEstoque();renderTrocas();
+  renderRanking();
+  renderEstoque();
+  renderTrocas();
   if(isAdmin)renderAdmin();
-  renderCatalogSlide();renderRankSlide();
+  renderCatalogSlide();
+  renderRankSlide();
 }
 
 // ══════════════════════════════
@@ -1035,31 +1063,46 @@ function checkLogin() {
 // ══════════════════════════════
 // HISTÓRICO POR COLABORADOR
 // ══════════════════════════════
-function verHistColab(nome) {
+async function verHistColab(nome) {
   const c = colaboradores.find(x=>x.nome===nome);
   if (!c) return;
-  const hist = c.historico || [];
-  const rows = hist.length ? [...hist].reverse().map(h=>`
-    <tr>
-      <td style="color:var(--text2);font-size:12px">${h.data}</td>
-      <td><span class="badge ${h.op==='add'?'badge-green':'badge-red'}">${h.op==='add'?'➕':' ➖'} ${h.pts} pts</span></td>
-      <td style="color:var(--text2);font-size:13px">${h.motivo||'—'}</td>
-      <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold)">${(h.saldo||0).toLocaleString()} pts</td>
-    </tr>`).join('') 
-    : '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:16px">Nenhum lançamento.</td></tr>';
 
+  // Cria modal com loading
   const modal = document.createElement('div');
   modal.className = 'modal-bg';
   modal.innerHTML = `<div class="modal" style="width:560px;max-width:95vw;max-height:80vh;overflow-y:auto;">
     <div class="modal-title" style="font-size:22px">📋 ${nome}</div>
     <div class="modal-sub">Saldo atual: <strong style="color:var(--gold)">${c.pontos.toLocaleString()} pts</strong> · ${c.trocas} troca${c.trocas!==1?'s':''}</div>
-    <table style="width:100%;text-align:left">
-      <thead><tr><th>Data</th><th>Operação</th><th>Motivo</th><th>Saldo</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <div id="histContent" style="text-align:center;padding:20px;color:var(--text2)">Carregando...</div>
     <div style="margin-top:16px"><button class="btn btn-ghost" style="width:100%" onclick="this.closest('.modal-bg').remove()">Fechar</button></div>
   </div>`;
   document.body.appendChild(modal);
+
+  // Busca histórico do Supabase
+  const {data: hist} = await sb.from('historico')
+    .select('*')
+    .eq('colaborador', nome)
+    .order('id', {ascending: false});
+
+  const rows = hist && hist.length ? hist.map(h=>`
+    <tr>
+      <td style="color:var(--text2);font-size:12px;padding:8px 4px">${h.data||'—'}</td>
+      <td style="padding:8px 4px"><span class="badge ${h.operacao==='Adição'?'badge-green':'badge-red'}">${h.operacao==='Adição'?'➕':'➖'} ${h.pontos} pts</span></td>
+      <td style="color:var(--text2);font-size:12px;padding:8px 4px">${h.motivo||'—'}</td>
+      <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);padding:8px 4px">${(h.saldo_apos||0).toLocaleString()} pts</td>
+    </tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:16px">Nenhum lançamento.</td></tr>';
+
+  document.getElementById('histContent').innerHTML = `
+    <table style="width:100%;text-align:left">
+      <thead><tr>
+        <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">DATA</th>
+        <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">OPERAÇÃO</th>
+        <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">MOTIVO</th>
+        <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">SALDO</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 
