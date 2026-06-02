@@ -326,7 +326,7 @@
       <div class="rules-grid cols3" style="max-width:960px;">
         <div class="rule-card anim d2"><div class="rule-card-header"><span class="rule-icon">⭐</span><span class="rule-card-title">Qualidade</span></div><div class="rule-row"><span class="rule-desc">2 monitorias da semana com 100%</span><span class="rule-prize plus">🟢 + 200 pts</span></div></div>
         <div class="rule-card anim d3"><div class="rule-card-header"><span class="rule-icon">🔒</span><span class="rule-card-title">Retenção</span></div><div class="rule-row"><span class="rule-desc">A cada 2 retenções realizadas</span><span class="rule-prize plus">🟢 + 50 pts</span></div></div>
-        <div class="rule-card anim d4"><div class="rule-card-header"><span class="rule-icon">📞</span><span class="rule-card-title">Operação</span></div><div class="rule-row"><span class="rule-desc">140 ligações diárias acima de 5s</span><span class="rule-prize plus">🟢 + 100 pts</span></div><div class="rule-row"><span class="rule-desc">200 chats diários</span><span class="rule-prize plus">🟢 + 100 pts</span></div></div>
+        <div class="rule-card anim d4"><div class="rule-card-header"><span class="rule-icon">📞</span><span class="rule-card-title">Operação</span></div><div class="rule-row"><span class="rule-desc">140 ligações diárias acima de 15s</span><span class="rule-prize plus">🟢 + 100 pts</span></div><div class="rule-row"><span class="rule-desc">200 chats diários</span><span class="rule-prize plus">🟢 + 100 pts</span></div></div>
       </div>
     </div>
 
@@ -475,7 +475,7 @@
               <option value="add|50|A cada 2 retenções realizadas">🟢 +50 pts — A cada 2 retenções</option>
             </optgroup>
             <optgroup label="📞 Operação">
-              <option value="add|100|140 ligações diárias acima de 5 segundos">🟢 +100 pts — 140 ligações diárias acima de 5s</option>
+              <option value="add|100|140 ligações diárias acima de 15 segundos">🟢 +100 pts — 140 ligações diárias acima de 15s</option>
               <option value="add|100|200 chats diários">🟢 +100 pts — 200 chats diários</option>
             </optgroup>
             <optgroup label="📋 Disciplina">
@@ -588,23 +588,24 @@ const SENHA = 'mercadinho';
 let isAdmin = false;
 
 const produtos = [
-  {nome:'Bala Dadinho 5un',pts:500,estoque:3},
+  {nome:'Bala Dadinho',pts:500,estoque:3},
   {nome:'Bala Halls',pts:0,estoque:0},
   {nome:'Bisc. Passa Tempo',pts:0,estoque:0},
   {nome:'Bis',pts:300,estoque:7},
   {nome:'Cheetos',pts:120,estoque:0},
   {nome:'Chiclete Trident',pts:0,estoque:0},
+  {nome:'Coca-Cola',pts:150,estoque:0},
   {nome:'Corona Individual',pts:200,estoque:12},
   {nome:'Crédito iFood R$50',pts:2000,estoque:3},
+  {nome:'Energético Monster',pts:250,estoque:5},
   {nome:'Fandangos',pts:120,estoque:10},
-  {nome:'Monster',pts:400,estoque:4},
-  {nome:'Monster Energético',pts:250,estoque:5},
   {nome:'Pack Corona c/6',pts:1200,estoque:2},
   {nome:'Torcida',pts:150,estoque:6},
   {nome:'Uniforme',pts:3000,estoque:2},
   {nome:'Vale Churrascaria Individual',pts:0,estoque:0},
+  {nome:'Vinho Pérgola',pts:1500,estoque:0},
 ];
-const emojis = ['🍬','🍬','🍪','🍫','🧀','🍬','🍺','📱','🍿','🟢','⚡','🍺','🍟','👕','🥩'];
+const emojis = ['🍬','🍬','🍪','🍫','🧀','🍬','🥤','🍺','📱','⚡','🍿','🍺','🍟','👕','🥩','🍷'];
 
 let colaboradores = [
   {nome:'Raianne Santos',pontos:0,trocas:0,historico:[]},
