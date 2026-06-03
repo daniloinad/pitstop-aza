@@ -499,6 +499,7 @@
           </div>
         </div>
         <div class="form-group"><label class="form-label">Motivo (editável)</label><input class="form-input" type="text" id="ptMotivo" placeholder="Selecione uma regra acima..."></div>
+        <div class="form-group"><label class="form-label">Data de Referência</label><input class="form-input" type="date" id="ptData"></div>
         <button class="btn btn-gold" style="width:100%" onclick="lancarPontos()">CONFIRMAR PONTUAÇÃO</button>
       </div>
       <div class="card">
@@ -1151,6 +1152,10 @@ async function excluirLancamento(id, nomeColab, pts, operacao, btn) {
 (async () => {
   await load();
   renderAll();
+  // Define data padrão como hoje
+  const hoje = new Date().toISOString().split('T')[0];
+  const ptData = document.getElementById('ptData');
+  if(ptData) ptData.value = hoje;
 })();
 </script>
 </body>
