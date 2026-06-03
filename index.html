@@ -635,7 +635,8 @@ async function sbSaveEstoque() {
   }
 }
 async function sbAddHistorico(entry) {
-  await sb.from('historico').insert({data:entry.data, colaborador:entry.colab, operacao:entry.op==='add'?'Adição':'Desconto', pontos:entry.pts, motivo:entry.motivo, saldo_apos:entry.saldo});
+  const motivo = entry.motivo && entry.motivo.trim() ? entry.motivo.trim() : 'Lançamento manual';
+  await sb.from('historico').insert({data:entry.data, colaborador:entry.colab, operacao:entry.op==='add'?'Adição':'Desconto', pontos:entry.pts, motivo:motivo, saldo_apos:entry.saldo});
 }
 async function sbAddTroca(entry) {
   await sb.from('trocas').insert({data:entry.data, colaborador:entry.colab, produto:entry.prod, pontos:entry.pts});
@@ -924,8 +925,9 @@ async function lancarPontos(){
   const nome=document.getElementById('ptColab').value;
   const qtd=parseInt(document.getElementById('ptQtd').value);
   const op=document.getElementById('ptOp').value;
-  const motivo=document.getElementById('ptMotivo').value;
+  const motivo=document.getElementById('ptMotivo').value.trim();
   if(!nome||!qtd||qtd<=0){toast('⚠️ Preencha todos os campos!');return;}
+  if(!motivo){toast('⚠️ Selecione uma regra ou preencha o motivo!');return;}
   const c=colaboradores.find(x=>x.nome===nome);
   if(!c)return;
   if(op==='add')c.pontos+=qtd; else c.pontos=Math.max(0,c.pontos-qtd);
@@ -1096,10 +1098,11 @@ async function verHistColab(nome) {
     <tr>
       <td style="color:var(--text2);font-size:12px;padding:8px 4px">${h.data||'—'}</td>
       <td style="padding:8px 4px"><span class="badge ${h.operacao==='Adição'?'badge-green':'badge-red'}">${h.operacao==='Adição'?'➕':'➖'} ${h.pontos} pts</span></td>
-      <td style="color:var(--text2);font-size:12px;padding:8px 4px">${h.motivo||'—'}</td>
+      <td style="color:var(--text2);font-size:12px;padding:8px 4px">${h.motivo && h.motivo.trim() ? h.motivo : 'Lançamento manual'}</td>
       <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold);padding:8px 4px">${(h.saldo_apos||0).toLocaleString()} pts</td>
+      ${isAdmin ? `<td style="padding:8px 4px"><button class="btn btn-red btn-sm" onclick="excluirLancamento(${h.id},'${nome}',${h.pontos},'${h.operacao}',this)">🗑️</button></td>` : '<td></td>'}
     </tr>`).join('')
-    : '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:16px">Nenhum lançamento.</td></tr>';
+    : '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:16px">Nenhum lançamento.</td></tr>';
 
   document.getElementById('histContent').innerHTML = `
     <table style="width:100%;text-align:left">
@@ -1108,12 +1111,39 @@ async function verHistColab(nome) {
         <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">OPERAÇÃO</th>
         <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">MOTIVO</th>
         <th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">SALDO</th>
+        ${isAdmin ? '<th style="padding:8px 4px;color:var(--text2);font-size:11px;letter-spacing:2px">EXCLUIR</th>' : '<th></th>'}
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
 
+
+// ══════════════════════════════
+// EXCLUIR LANÇAMENTO
+// ══════════════════════════════
+async function excluirLancamento(id, nomeColab, pts, operacao, btn) {
+  if(!confirm('Excluir este lançamento? Os pontos serão revertidos automaticamente.')) return;
+  
+  // Reverte os pontos no colaborador
+  const c = colaboradores.find(x => x.nome === nomeColab);
+  if (c) {
+    if (operacao === 'Adição') c.pontos = Math.max(0, c.pontos - pts);
+    else c.pontos = c.pontos + pts;
+    await sb.from('colaboradores').update({pontos: c.pontos}).eq('nome', nomeColab);
+  }
+
+  // Deleta o lançamento do banco
+  await sb.from('historico').delete().eq('id', id);
+
+  toast('✅ Lançamento excluído e pontos revertidos!');
+  
+  // Remove a linha da tabela
+  btn.closest('tr').remove();
+  
+  // Atualiza ranking
+  renderRanking();
+}
 
 // ══════════════════════════════
 // INIT
