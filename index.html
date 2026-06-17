@@ -411,9 +411,48 @@
 
   <div class="s-tabs">
     <button class="s-tab active" onclick="showSPage('ranking',this)">🏆 Ranking</button>
+    <button class="s-tab" onclick="showSPage('meustroca',this)">🛒 Trocar Pontos</button>
     <button class="s-tab" onclick="requireAdmin('estoque',this)">📦 Estoque</button>
     <button class="s-tab" onclick="requireAdmin('trocas',this)">🔄 Trocas</button>
     <button class="s-tab admin-only" onclick="showSPage('admin',this)" style="display:none;color:var(--gold)">⚙️ Admin</button>
+  </div>
+
+  <!-- TROCAR PONTOS (self-service) -->
+  <div class="s-page" id="sp-meustroca">
+    <div class="sec-title">🛒 Trocar <span>Pontos</span></div>
+    <div class="sec-sub">Selecione seu nome, confirme o PIN e escolha o produto</div>
+    <div style="max-width:500px;margin:0 auto;">
+      <div class="card mt16">
+        <div id="trocaStep1">
+          <div class="form-group"><label class="form-label">Seu Nome</label>
+            <select class="form-input" id="selfColab" onchange="loadSelfSaldo()">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Seu PIN</label>
+            <input class="form-input" type="password" id="selfPIN" placeholder="Digite seu PIN de 4 dígitos" maxlength="4">
+          </div>
+          <div id="selfSaldoInfo" style="display:none;background:rgba(255,215,0,0.08);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center;">
+            <div style="font-size:12px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;">Seu Saldo</div>
+            <div id="selfSaldoVal" style="font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--gold);line-height:1;">0</div>
+            <div style="font-size:12px;color:var(--text2);">pontos disponíveis</div>
+          </div>
+          <div class="form-group"><label class="form-label">Produto</label>
+            <select class="form-input" id="selfProd">
+              <option value="">Selecione um produto...</option>
+            </select>
+          </div>
+          <button class="btn btn-gold" style="width:100%" onclick="confirmarSelfTroca()">✅ CONFIRMAR TROCA</button>
+        </div>
+        <div id="comprovante" style="display:none;text-align:center;">
+          <div style="font-size:40px;margin-bottom:8px">🎉</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold)">TROCA REALIZADA!</div>
+          <div id="comprovanteContent" style="background:var(--dark3);border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0;text-align:left;font-size:13px;line-height:2;"></div>
+          <button class="btn btn-gold" style="width:100%;margin-bottom:10px" onclick="imprimirComprovante()">🖨️ IMPRIMIR COMPROVANTE</button>
+          <button class="btn btn-ghost" style="width:100%" onclick="novaTroca()">↩️ NOVA TROCA</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- RANKING -->
@@ -548,7 +587,7 @@
         <button class="btn btn-green" style="width:100%;margin-bottom:10px" onclick="addColab()">ADICIONAR COLABORADOR</button>
         <div class="divider" style="margin:10px 0"></div>
         <div class="card-title">Cadastrados</div>
-        <div id="colabList" style="max-height:150px;overflow-y:auto;"></div>
+        <div id="colabList" style="max-height:200px;overflow-y:auto;"></div>
       </div>
     </div>
     <div class="divider"></div>
@@ -609,7 +648,7 @@ const produtos = [
 ];
 const emojis = ['🍬','🍬','🍪','🍫','🧀','🍬','🥤','🍺','📱','⚡','🍿','🍺','🍟','👕','🥩','🍷'];
 
-let colaboradores = [
+let colaboradores = [ // {nome, pontos, trocas, pin}
   {nome:'Raianne Santos',pontos:0,trocas:0,historico:[]},
   {nome:'Esteffany Souza',pontos:0,trocas:0,historico:[]},
   {nome:'André Silva',pontos:0,trocas:0,historico:[]},
@@ -895,9 +934,15 @@ function renderAdmin(){
   const po=produtos.map((p,i)=>`<option value="${i}">${p.nome} (${p.pts} pts · estoque: ${p.estoque})</option>`).join('');
   ['trProd','stProd','delProd'].forEach(id=>{const e=document.getElementById(id);if(!e)return;const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+po;if(v)e.value=v;});
   document.getElementById('colabList').innerHTML=colaboradores.map((c,i)=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-      <span style="font-size:13px">${c.nome} <span style="color:var(--gold)">${c.pontos} pts</span></span>
-      <button class="btn btn-red btn-sm" onclick="removeColab(${i})">✕</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <span style="font-size:13px">
+        ${c.nome} <span style="color:var(--gold)">${c.pontos} pts</span>
+        <span style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px">PIN: ${c.pin||'—'}</span>
+      </span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="resetarPIN(${i})" title="Gerar novo PIN">🔄</button>
+        <button class="btn btn-red btn-sm" onclick="removeColab(${i})">✕</button>
+      </div>
     </div>`).join('');
   const hb=document.getElementById('histBody');
   if(!historico.length){hb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px">Nenhum lançamento ainda.</td></tr>';return;}
@@ -917,6 +962,7 @@ function renderAll(){
   if(isAdmin)renderAdmin();
   renderCatalogSlide();
   renderRankSlide();
+  popularSelfColab();
 }
 
 // ══════════════════════════════
@@ -1012,16 +1058,22 @@ function removerProduto(){
   toast(`🗑️ ${p.nome} removido!`);
 }
 
+function gerarPIN(){
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
 async function addColab(){
   const nome=document.getElementById('colabNome').value.trim();
   if(!nome){toast('⚠️ Digite o nome!');return;}
   if(colaboradores.find(c=>c.nome.toLowerCase()===nome.toLowerCase())){toast('⚠️ Já existe!');return;}
-  const {error} = await sb.from('colaboradores').insert({nome,pontos:0,trocas:0});
+  const pin = gerarPIN();
+  const {error} = await sb.from('colaboradores').insert({nome,pontos:0,trocas:0,pin});
   if(error){toast('⚠️ Erro ao adicionar!');console.error(error);return;}
-  colaboradores.push({nome,pontos:0,trocas:0});
+  colaboradores.push({nome,pontos:0,trocas:0,pin});
   document.getElementById('colabNome').value='';
   save();renderAll();
-  toast(`✅ ${nome} adicionado!`);
+  toast(`✅ ${nome} adicionado! PIN: ${pin}`);
+  alert(`✅ Colaborador: ${nome}\nPIN gerado: ${pin}\n\nGuarde este PIN e repasse ao colaborador!`);
 }
 
 async function removeColab(i){
@@ -1035,6 +1087,16 @@ async function removeColab(i){
 }
 
 function now(){return new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+
+async function resetarPIN(i){
+  if(!confirm(`Gerar novo PIN para ${colaboradores[i].nome}?`))return;
+  const pin = gerarPIN();
+  const {error} = await sb.from('colaboradores').update({pin}).eq('nome',colaboradores[i].nome);
+  if(error){toast('⚠️ Erro ao resetar PIN!');return;}
+  colaboradores[i].pin = pin;
+  renderAll();
+  alert(`✅ Novo PIN de ${colaboradores[i].nome}: ${pin}\n\nRepasse ao colaborador!`);
+}
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
@@ -1149,6 +1211,94 @@ async function excluirLancamento(id, nomeColab, pts, operacao, btn) {
   
   // Atualiza ranking
   renderRanking();
+}
+
+// ══════════════════════════════
+// SELF-SERVICE TROCA
+// ══════════════════════════════
+function loadSelfSaldo(){
+  const nome = document.getElementById('selfColab').value;
+  const info = document.getElementById('selfSaldoInfo');
+  if(!nome){info.style.display='none';return;}
+  const c = colaboradores.find(x=>x.nome===nome);
+  if(!c){info.style.display='none';return;}
+  document.getElementById('selfSaldoVal').textContent = c.pontos.toLocaleString();
+  info.style.display='block';
+  // Popula produtos disponíveis
+  const disponiveis = produtos.filter(p=>p.pts>0 && p.estoque>0 && p.pts<=c.pontos);
+  const selfProd = document.getElementById('selfProd');
+  selfProd.innerHTML = '<option value="">Selecione um produto...</option>' +
+    disponiveis.map((p,i)=>`<option value="${produtos.indexOf(p)}">${p.nome} — ${p.pts.toLocaleString()} pts</option>`).join('');
+}
+
+function popularSelfColab(){
+  const sel = document.getElementById('selfColab');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Selecione...</option>' +
+    colaboradores.map(c=>`<option value="${c.nome}">${c.nome}</option>`).join('');
+}
+
+async function confirmarSelfTroca(){
+  const nome = document.getElementById('selfColab').value;
+  const pin = document.getElementById('selfPIN').value.trim();
+  const idx = parseInt(document.getElementById('selfProd').value);
+  if(!nome){toast('⚠️ Selecione seu nome!');return;}
+  if(!pin){toast('⚠️ Digite seu PIN!');return;}
+  if(isNaN(idx)){toast('⚠️ Selecione um produto!');return;}
+  const c = colaboradores.find(x=>x.nome===nome);
+  if(!c || c.pin !== pin){toast('⚠️ PIN incorreto!');return;}
+  const p = produtos[idx];
+  if(c.pontos < p.pts){toast('⚠️ Pontos insuficientes!');return;}
+  if(p.estoque <= 0){toast('⚠️ Produto esgotado!');return;}
+
+  // Realiza troca
+  c.pontos -= p.pts;
+  c.trocas += 1;
+  p.estoque -= 1;
+
+  const dataHora = now();
+  const codigo = 'PIT-' + Date.now().toString().slice(-6);
+
+  await sb.from('colaboradores').update({pontos:c.pontos,trocas:c.trocas}).eq('nome',nome);
+  await sb.from('estoque').update({quantidade:p.estoque}).eq('produto',p.nome);
+  await sb.from('trocas').insert({data:dataHora,colaborador:nome,produto:p.nome,pontos:p.pts});
+  await sbAddHistorico({data:dataHora,colab:nome,op:'sub',pts:p.pts,motivo:`Troca: ${p.nome} (${codigo})`,saldo:c.pontos});
+
+  // Mostra comprovante
+  document.getElementById('trocaStep1').style.display='none';
+  document.getElementById('comprovante').style.display='block';
+  document.getElementById('comprovanteContent').innerHTML = `
+    <div style="text-align:center;margin-bottom:12px;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold)">🛒 PIT STOP AZA — COMPROVANTE</div>
+    <div><strong>Código:</strong> ${codigo}</div>
+    <div><strong>Data:</strong> ${dataHora}</div>
+    <div><strong>Colaborador:</strong> ${nome}</div>
+    <div><strong>Produto:</strong> ${p.nome}</div>
+    <div><strong>Pontos utilizados:</strong> ${p.pts.toLocaleString()} pts</div>
+    <div><strong>Saldo restante:</strong> ${c.pontos.toLocaleString()} pts</div>
+    <div style="margin-top:12px;text-align:center;color:var(--text2);font-size:11px;">Apresente este comprovante para retirar seu produto.</div>
+  `;
+  renderRanking();
+}
+
+function imprimirComprovante(){
+  const conteudo = document.getElementById('comprovanteContent').innerHTML;
+  const w = window.open('','_blank');
+  w.document.write(`<html><body style="font-family:Arial;padding:20px;max-width:400px;margin:0 auto;">
+    <h2 style="text-align:center">🛒 Pit Stop AZA</h2>
+    ${conteudo}
+    <hr><p style="text-align:center;font-size:12px">Equipe INAD AZA · Junho 2026</p>
+  </body></html>`);
+  w.document.close();
+  w.print();
+}
+
+function novaTroca(){
+  document.getElementById('trocaStep1').style.display='block';
+  document.getElementById('comprovante').style.display='none';
+  document.getElementById('selfColab').value='';
+  document.getElementById('selfPIN').value='';
+  document.getElementById('selfSaldoInfo').style.display='none';
+  document.getElementById('selfProd').innerHTML='<option value="">Selecione um produto...</option>';
 }
 
 // ══════════════════════════════
