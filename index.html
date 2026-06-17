@@ -1012,21 +1012,26 @@ function removerProduto(){
   toast(`🗑️ ${p.nome} removido!`);
 }
 
-function addColab(){
+async function addColab(){
   const nome=document.getElementById('colabNome').value.trim();
   if(!nome){toast('⚠️ Digite o nome!');return;}
   if(colaboradores.find(c=>c.nome.toLowerCase()===nome.toLowerCase())){toast('⚠️ Já existe!');return;}
+  const {error} = await sb.from('colaboradores').insert({nome,pontos:0,trocas:0});
+  if(error){toast('⚠️ Erro ao adicionar!');console.error(error);return;}
   colaboradores.push({nome,pontos:0,trocas:0});
-  sb.from('colaboradores').insert({nome,pontos:0,trocas:0});
   document.getElementById('colabNome').value='';
   save();renderAll();
   toast(`✅ ${nome} adicionado!`);
 }
 
-function removeColab(i){
+async function removeColab(i){
   if(!confirm(`Remover ${colaboradores[i].nome}?`))return;
-  sb.from('colaboradores').delete().eq('nome',colaboradores[i].nome);
-  colaboradores.splice(i,1);save();renderAll();toast('Removido.');
+  const nome = colaboradores[i].nome;
+  const {error} = await sb.from('colaboradores').delete().eq('nome',nome);
+  if(error){toast('⚠️ Erro ao remover!');console.error(error);return;}
+  colaboradores.splice(i,1);
+  save();renderAll();
+  toast(`🗑️ ${nome} removido!`);
 }
 
 function now(){return new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
