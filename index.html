@@ -1069,7 +1069,9 @@ async function addColab(){
   const pin = gerarPIN();
   const {error} = await sb.from('colaboradores').insert({nome,pontos:0,trocas:0,pin});
   if(error){toast('⚠️ Erro ao adicionar!');console.error(error);return;}
-  colaboradores.push({nome,pontos:0,trocas:0,pin});
+  // Recarrega todos colaboradores do Supabase
+  const {data: cols} = await sb.from('colaboradores').select('*').order('pontos',{ascending:false});
+  if(cols) colaboradores = cols.map(c=>({nome:c.nome,pontos:c.pontos,trocas:c.trocas,pin:String(c.pin||''),historico:[]}));
   document.getElementById('colabNome').value='';
   save();renderAll();
   toast(`✅ ${nome} adicionado! PIN: ${pin}`);
@@ -1090,13 +1092,16 @@ function now(){return new Date().toLocaleDateString('pt-BR')+' '+new Date().toLo
 
 async function resetarPIN(i){
   if(!confirm(`Gerar novo PIN para ${colaboradores[i].nome}?`))return;
+  const nome = colaboradores[i].nome;
   const pin = gerarPIN();
-  const {data, error} = await sb.from('colaboradores').update({pin:pin}).eq('nome',colaboradores[i].nome).select();
+  const {error} = await sb.from('colaboradores').update({pin:pin}).eq('nome',nome);
   if(error){toast('⚠️ Erro ao resetar PIN! '+error.message);console.error(error);return;}
-  colaboradores[i].pin = pin;
+  // Recarrega todos colaboradores do Supabase para manter PINs corretos
+  const {data: cols} = await sb.from('colaboradores').select('*').order('pontos',{ascending:false});
+  if(cols) colaboradores = cols.map(c=>({nome:c.nome,pontos:c.pontos,trocas:c.trocas,pin:String(c.pin||''),historico:[]}));
   renderAll();
-  toast(`✅ PIN de ${colaboradores[i].nome}: ${pin}`);
-  alert(`✅ Novo PIN de ${colaboradores[i].nome}\n\nPIN: ${pin}\n\nAnote e repasse ao colaborador!`);
+  toast(`✅ PIN de ${nome}: ${pin}`);
+  alert(`✅ Novo PIN de ${nome}\n\nPIN: ${pin}\n\nAnote e repasse ao colaborador!`);
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
