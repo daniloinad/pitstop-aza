@@ -937,7 +937,7 @@ function renderAdmin(){
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
       <span style="font-size:13px">
         ${c.nome} <span style="color:var(--gold)">${c.pontos} pts</span>
-        <span style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px">PIN: ${c.pin||'—'}</span>
+        <span style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;padding:3px 10px;border-radius:6px;margin-left:8px;letter-spacing:2px">${c.pin ? '🔑 '+c.pin : '⚠️ Sem PIN'}</span>
       </span>
       <div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="resetarPIN(${i})" title="Gerar novo PIN">🔄</button>
@@ -1091,11 +1091,12 @@ function now(){return new Date().toLocaleDateString('pt-BR')+' '+new Date().toLo
 async function resetarPIN(i){
   if(!confirm(`Gerar novo PIN para ${colaboradores[i].nome}?`))return;
   const pin = gerarPIN();
-  const {error} = await sb.from('colaboradores').update({pin}).eq('nome',colaboradores[i].nome);
-  if(error){toast('⚠️ Erro ao resetar PIN!');return;}
+  const {data, error} = await sb.from('colaboradores').update({pin:pin}).eq('nome',colaboradores[i].nome).select();
+  if(error){toast('⚠️ Erro ao resetar PIN! '+error.message);console.error(error);return;}
   colaboradores[i].pin = pin;
   renderAll();
-  alert(`✅ Novo PIN de ${colaboradores[i].nome}: ${pin}\n\nRepasse ao colaborador!`);
+  toast(`✅ PIN de ${colaboradores[i].nome}: ${pin}`);
+  alert(`✅ Novo PIN de ${colaboradores[i].nome}\n\nPIN: ${pin}\n\nAnote e repasse ao colaborador!`);
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
@@ -1245,8 +1246,15 @@ async function confirmarSelfTroca(){
   if(!nome){toast('⚠️ Selecione seu nome!');return;}
   if(!pin){toast('⚠️ Digite seu PIN!');return;}
   if(isNaN(idx)){toast('⚠️ Selecione um produto!');return;}
+  // Valida PIN direto do Supabase
+  const {data: colabData, error: pinError} = await sb.from('colaboradores').select('*').eq('nome',nome).single();
+  if(pinError || !colabData){toast('⚠️ Colaborador não encontrado!');return;}
+  if(!colabData.pin || colabData.pin !== pin){toast('⚠️ PIN incorreto!');return;}
   const c = colaboradores.find(x=>x.nome===nome);
-  if(!c || c.pin !== pin){toast('⚠️ PIN incorreto!');return;}
+  if(!c){toast('⚠️ Erro interno!');return;}
+  // Atualiza dados locais com os do banco
+  c.pontos = colabData.pontos;
+  c.trocas = colabData.trocas;
   const p = produtos[idx];
   if(c.pontos < p.pts){toast('⚠️ Pontos insuficientes!');return;}
   if(p.estoque <= 0){toast('⚠️ Produto esgotado!');return;}
