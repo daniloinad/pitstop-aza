@@ -736,7 +736,10 @@ function switchApp(app) {
   document.getElementById('swPresent').classList.toggle('active', app==='present');
   document.getElementById('swSistema').classList.toggle('active', app==='sistema');
   if (app==='sistema') renderAll();
-  if (app==='present') { renderCatalogSlide(); renderRankSlide(); }
+  if (app==='present') { 
+    // Força recarregamento do catálogo do Supabase
+    setTimeout(()=>{ renderCatalogSlide(); renderRankSlide(); }, 100);
+  }
 }
 
 // ══════════════════════════════
@@ -756,8 +759,8 @@ function go(n){
   slides[cur].classList.add('active');
   dotsEl.children[cur].classList.add('active');
   counterEl.textContent=(cur+1)+' / '+total;
-  if (cur===4) renderCatalogSlide();
-  if (cur===5) renderRankSlide();
+  if (cur===4) renderCatalogSlide();  // slide s5 = catálogo
+  if (cur===5) renderRankSlide();     // slide s6 = ranking
 }
 function next(){go(cur+1);}
 function prev(){go(cur-1);}
@@ -964,6 +967,18 @@ function renderAll(){
   renderRankSlide();
   popularSelfColab();
 }
+
+// Recarrega catálogo a cada vez que o slide 5 fica visível
+document.addEventListener('DOMContentLoaded', ()=>{
+  const deck = document.getElementById('deck');
+  if(deck){
+    const observer = new MutationObserver(()=>{
+      const s5 = document.getElementById('s5');
+      if(s5 && s5.classList.contains('active')) renderCatalogSlide();
+    });
+    observer.observe(deck, {subtree:true, attributeFilter:['class']});
+  }
+});
 
 // ══════════════════════════════
 // AÇÕES ADMIN
