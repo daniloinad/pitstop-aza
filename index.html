@@ -952,7 +952,13 @@ function renderAdmin(){
   const co=colaboradores.map(c=>`<option value="${c.nome}">${c.nome} (${c.pontos} pts)</option>`).join('');
   ['ptColab','trColab'].forEach(id=>{const e=document.getElementById(id);const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+co;if(v)e.value=v;});
   const po=produtos.map((p,i)=>`<option value="${i}">${p.nome} (${p.pts} pts · estoque: ${p.estoque})</option>`).join('');
-  ['trProd','stProd','delProd'].forEach(id=>{const e=document.getElementById(id);if(!e)return;const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+po;if(v)e.value=v;});
+  ['trProd','stProd'].forEach(id=>{const e=document.getElementById(id);if(!e)return;const v=e.value;e.innerHTML='<option value="">Selecione...</option>'+po;if(v)e.value=v;});
+  // delProd usa nome como valor
+  const delEl=document.getElementById('delProd');
+  if(delEl){const v=delEl.value;delEl.innerHTML='<option value="">Selecione...</option>'+produtos.map(p=>`<option value="${p.nome}">${p.nome} (${p.pts} pts · estoque: ${p.estoque})</option>`).join('');if(v)delEl.value=v;}
+  // stProd usa nome como valor também
+  const stEl=document.getElementById('stProd');
+  if(stEl){const v=stEl.value;stEl.innerHTML='<option value="">Selecione...</option>'+produtos.map(p=>`<option value="${p.nome}">${p.nome} (${p.pts} pts · estoque: ${p.estoque})</option>`).join('');if(v)stEl.value=v;}
   document.getElementById('colabList').innerHTML=colaboradores.map((c,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
       <span style="font-size:13px">
@@ -1010,12 +1016,17 @@ async function lancarPontos(){
   const c=colaboradores.find(x=>x.nome===nome);
   if(!c)return;
   if(op==='add')c.pontos+=qtd; else c.pontos=Math.max(0,c.pontos-qtd);
-  const entry = {data:now(),op,pts:qtd,motivo,saldo:c.pontos};
-  historico.push({data:now(),colab:nome,op,pts:qtd,motivo});
+  // Usa data de referência selecionada
+  const dataInputEl = document.getElementById('ptData');
+  const dataRef = dataInputEl && dataInputEl.value
+    ? new Date(dataInputEl.value + 'T12:00:00').toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+    : now();
+  const entry = {data:dataRef,op,pts:qtd,motivo,saldo:c.pontos};
+  historico.push({data:dataRef,colab:nome,op,pts:qtd,motivo});
   if(!c.historico) c.historico=[];
   c.historico.push(entry);
   await sb.from('colaboradores').update({pontos:c.pontos}).eq('nome',nome);
-  await sbAddHistorico({data:now(),colab:nome,op,pts:qtd,motivo,saldo:c.pontos});
+  await sbAddHistorico({data:dataRef,colab:nome,op,pts:qtd,motivo,saldo:c.pontos});
   save();renderAll();
   document.getElementById('ptQtd').value='';
   document.getElementById('ptMotivo').value='';
@@ -1046,18 +1057,21 @@ async function registrarTroca(){
 }
 
 async function atualizarEstoque(){
-  const idx=parseInt(document.getElementById('stProd').value);
+  const prodNome=document.getElementById('stProd').value;
   const qtd=parseInt(document.getElementById('stQtd').value);
   const op=document.getElementById('stOp').value;
-  if(isNaN(idx)||isNaN(qtd)||qtd<0){toast('⚠️ Preencha os campos!');return;}
-  const p=produtos[idx];
+  if(!prodNome||isNaN(qtd)||qtd<0){toast('⚠️ Preencha os campos!');return;}
+  // Busca estoque atual do Supabase
+  const {data: atual} = await sb.from('estoque').select('quantidade').eq('produto',prodNome).single();
+  const qtdAtual = atual ? Number(atual.quantidade) : 0;
   let novaQtd;
   if(op==='set') novaQtd=qtd;
-  else if(op==='add') novaQtd=p.estoque+qtd;
-  else novaQtd=Math.max(0,p.estoque-qtd);
-  const {error} = await sb.from('estoque').update({quantidade:novaQtd}).eq('produto',p.nome);
-  if(error){toast('⚠️ Erro ao salvar!');console.error(error);return;}
-  p.estoque=novaQtd;
+  else if(op==='add') novaQtd=qtdAtual+qtd;
+  else novaQtd=Math.max(0,qtdAtual-qtd);
+  const {error} = await sb.from('estoque').update({quantidade:novaQtd}).eq('produto',prodNome);
+  if(error){toast('⚠️ Erro ao salvar! '+error.message);console.error(error);return;}
+  const p = produtos.find(x=>x.nome===prodNome);
+  if(p) p.estoque=novaQtd;
   // Recarrega do Supabase
   const {data: est2} = await sb.from('estoque').select('*').order('produto');
   if(est2){ produtos.length=0; emojis.length=0; const emojiMap2={'Bala Dadinho 5un':'🍬','Bala Halls':'🍬','Bisc. Passa Tempo':'🍪','Bis':'🍫','Cheetos':'🧀','Chiclete Trident':'🍬','Coca-Cola':'🥤','Corona Individual':'🍺','Crédito iFood R$50':'📱','Energético Monster':'⚡','Fandangos':'🍿','Ouro Branco':'🍫','Pack Corona c/6':'🍺','Sonho de Valsa':'🍫','Torcida':'🍟','Uniforme':'👕','Vale Churrascaria Individual':'🥩','Vinho Pérgola':'🍷'}; est2.forEach(e=>{produtos.push({nome:e.produto,pts:e.pontos,estoque:e.quantidade});emojis.push(emojiMap2[e.produto]||'🛍️');}); }
