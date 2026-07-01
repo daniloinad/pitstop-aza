@@ -1095,16 +1095,19 @@ function cadastrarProduto(){
   toast(`✅ ${nome} cadastrado!`);
 }
 
-function removerProduto(){
-  const idx=parseInt(document.getElementById('delProd').value);
-  if(isNaN(idx)){toast('⚠️ Selecione um produto!');return;}
-  const p=produtos[idx];
-  if(!confirm(`Remover "${p.nome}" do estoque?`))return;
-  sb.from('estoque').delete().eq('produto',p.nome);
-  produtos.splice(idx,1);
-  emojis.splice(idx,1);
+async function removerProduto(){
+  const prodNome=document.getElementById('delProd').value;
+  if(!prodNome){toast('⚠️ Selecione um produto!');return;}
+  if(!confirm(`Remover "${prodNome}" do estoque?`))return;
+  const {error} = await sb.from('estoque').delete().eq('produto',prodNome);
+  if(error){toast('⚠️ Erro ao remover! '+error.message);return;}
+  const idx = produtos.findIndex(x=>x.nome===prodNome);
+  if(idx>-1){ produtos.splice(idx,1); emojis.splice(idx,1); }
+  // Recarrega do Supabase
+  const {data: est} = await sb.from('estoque').select('*').order('produto');
+  if(est){ produtos.length=0; emojis.length=0; const em={'Bala Dadinho 5un':'🍬','Bala Halls':'🍬','Bisc. Passa Tempo':'🍪','Bis':'🍫','Cheetos':'🧀','Chiclete Trident':'🍬','Coca-Cola':'🥤','Corona Individual':'🍺','Crédito iFood R$50':'📱','Energético Monster':'⚡','Fandangos':'🍿','Ouro Branco':'🍫','Pack Corona c/6':'🍺','Sonho de Valsa':'🍫','Torcida':'🍟','Uniforme':'👕','Vale Churrascaria Individual':'🥩','Vinho Pérgola':'🍷'}; est.forEach(e=>{produtos.push({nome:e.produto,pts:e.pontos,estoque:e.quantidade});emojis.push(em[e.produto]||'🛍️');}); }
   save();renderAll();
-  toast(`🗑️ ${p.nome} removido!`);
+  toast(`🗑️ ${prodNome} removido!`);
 }
 
 function gerarPIN(){
