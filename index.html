@@ -412,7 +412,7 @@
   <div class="s-tabs">
     <button class="s-tab active" onclick="showSPage('ranking',this)">🏆 Ranking</button>
     <button class="s-tab" onclick="showSPage('meustroca',this)">🛒 Trocar Pontos</button>
-    <button class="s-tab" onclick="requireAdmin('estoque',this)">📦 Estoque</button>
+    <button class="s-tab" onclick="showSPage('estoque',this)">📦 Estoque</button>
     <button class="s-tab" onclick="requireAdmin('trocas',this)">🔄 Trocas</button>
     <button class="s-tab admin-only" onclick="showSPage('admin',this)" style="display:none;color:var(--gold)">⚙️ Admin</button>
   </div>
@@ -421,6 +421,11 @@
   <div class="s-page" id="sp-meustroca">
     <div class="sec-title">🛒 Trocar <span>Pontos</span></div>
     <div class="sec-sub">Selecione seu nome, confirme o PIN e escolha o produto</div>
+    <div id="manutencaoMsg" style="display:none;text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:16px">🔧</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold)">EM MANUTENÇÃO</div>
+      <div style="color:var(--text2);font-size:14px;margin-top:8px">As trocas estão temporariamente bloqueadas.<br>Tente novamente em breve!</div>
+    </div>
     <div style="max-width:500px;margin:0 auto;">
       <div class="card mt16">
         <div id="trocaStep1">
@@ -468,6 +473,9 @@
     <div class="sec-title">Estoque de <span>Produtos</span></div>
     <div class="sec-sub">Disponibilidade atual dos produtos do Mercadinho</div>
     <div class="grid4 mt16" id="estoqueGrid"></div>
+    <div id="estoqueAdminArea" style="display:none">
+      <div class="divider mt16"></div>
+    </div>
   </div>
 
   <!-- TROCAS -->
@@ -886,6 +894,7 @@ function renderRanking(){
 async function renderEstoque(){
   const grid = document.getElementById('estoqueGrid');
   if(!grid) return;
+  // Estoque visível para todos
   // Busca estoque atualizado do Supabase
   const {data: est} = await sb.from('estoque').select('*').order('produto');
   if(est && est.length > 0){
@@ -1041,6 +1050,9 @@ async function atualizarEstoque(){
   const {error} = await sb.from('estoque').update({quantidade:novaQtd}).eq('produto',p.nome);
   if(error){toast('⚠️ Erro ao salvar!');console.error(error);return;}
   p.estoque=novaQtd;
+  // Recarrega do Supabase
+  const {data: est2} = await sb.from('estoque').select('*').order('produto');
+  if(est2){ produtos.length=0; emojis.length=0; const emojiMap2={'Bala Dadinho 5un':'🍬','Bala Halls':'🍬','Bisc. Passa Tempo':'🍪','Bis':'🍫','Cheetos':'🧀','Chiclete Trident':'🍬','Coca-Cola':'🥤','Corona Individual':'🍺','Crédito iFood R$50':'📱','Energético Monster':'⚡','Fandangos':'🍿','Ouro Branco':'🍫','Pack Corona c/6':'🍺','Sonho de Valsa':'🍫','Torcida':'🍟','Uniforme':'👕','Vale Churrascaria Individual':'🥩','Vinho Pérgola':'🍷'}; est2.forEach(e=>{produtos.push({nome:e.produto,pts:e.pontos,estoque:e.quantidade});emojis.push(emojiMap2[e.produto]||'🛍️');}); }
   save();renderAll();
   toast(`✅ Estoque de ${p.nome}: ${novaQtd} un.`);
 }
@@ -1330,10 +1342,66 @@ function novaTroca(){
 }
 
 // ══════════════════════════════
+// BLOQUEIO DE TROCAS
+// ══════════════════════════════
+let trocasBloqueadas = false;
+
+async function toggleBloquearTrocas(){
+  trocasBloqueadas = !trocasBloqueadas;
+  await sb.from('configuracoes').upsert({chave:'trocas_bloqueadas',valor:trocasBloqueadas?'1':'0'},{onConflict:'chave'});
+  atualizarBloqueioUI();
+  toast(trocasBloqueadas ? '🔒 Trocas bloqueadas!' : '✅ Trocas liberadas!');
+}
+
+function atualizarBloqueioUI(){
+  const btn = document.getElementById('btnBloquearTrocas');
+  const manut = document.getElementById('manutencaoMsg');
+  const trocaForm = document.getElementById('trocaStep1');
+  if(btn){
+    btn.textContent = trocasBloqueadas ? '🔓 Liberar Trocas' : '🔒 Bloquear Trocas';
+    btn.className = trocasBloqueadas ? 'btn btn-green btn-sm' : 'btn btn-red btn-sm';
+  }
+  if(manut) manut.style.display = trocasBloqueadas ? 'block' : 'none';
+  if(trocaForm) trocaForm.style.display = trocasBloqueadas ? 'none' : 'block';
+}
+
+async function carregarConfiguracoes(){
+  try {
+    const {data} = await sb.from('configuracoes').select('*');
+    if(data){
+      data.forEach(c=>{
+        if(c.chave==='trocas_bloqueadas') trocasBloqueadas = c.valor==='1';
+        if(c.chave==='periodo_inicio'){const el=document.getElementById('periodoInicio');if(el)el.value=c.valor;}
+        if(c.chave==='periodo_fim'){const el=document.getElementById('periodoFim');if(el)el.value=c.valor;}
+        if(c.chave==='periodo_texto'){
+          // Atualiza texto do periodo na apresentação e no header
+          document.querySelectorAll('.cover-period').forEach(el=>el.textContent='📅 '+c.valor);
+        }
+      });
+    }
+    atualizarBloqueioUI();
+  } catch(e){ console.log('Config error:', e); }
+}
+
+async function salvarPeriodo(){
+  const inicio = document.getElementById('periodoInicio').value;
+  const fim = document.getElementById('periodoFim').value;
+  if(!inicio||!fim){toast('⚠️ Preencha as datas!');return;}
+  const fmt = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR');
+  const texto = `${fmt(inicio)} — ${fmt(fim)}`;
+  await sb.from('configuracoes').upsert({chave:'periodo_inicio',valor:inicio},{onConflict:'chave'});
+  await sb.from('configuracoes').upsert({chave:'periodo_fim',valor:fim},{onConflict:'chave'});
+  await sb.from('configuracoes').upsert({chave:'periodo_texto',valor:texto},{onConflict:'chave'});
+  document.querySelectorAll('.cover-period').forEach(el=>el.textContent='📅 '+texto);
+  toast('✅ Período atualizado: '+texto);
+}
+
+// ══════════════════════════════
 // INIT
 // ══════════════════════════════
 (async () => {
   await load();
+  await carregarConfiguracoes();
   renderAll();
   // Define data padrão como hoje
   const hoje = new Date().toISOString().split('T')[0];
